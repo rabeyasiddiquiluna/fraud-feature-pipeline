@@ -16,8 +16,8 @@
 
 # COMMAND ----------
 
-dbutils.widgets.text("raw_path", "/FileStore/fraud/raw/transactions", "Raw transactions (Parquet)")
-dbutils.widgets.text("merchants_path", "/FileStore/fraud/raw/merchants.parquet", "Merchant dimension")
+dbutils.widgets.text("raw_path", "/Volumes/workspace/default/fraud/transactions_flat.parquet", "Raw transactions (Parquet file or folder)")
+dbutils.widgets.text("merchants_path", "/Volumes/workspace/default/fraud/merchants.parquet", "Merchant dimension")
 dbutils.widgets.text("schema", "fraud", "Target schema")
 dbutils.widgets.text("hist_end", "2026-02-01", "Target-encoding history ends")
 dbutils.widgets.text("label_cutoff", "2026-03-21", "Labels known as of")
@@ -43,7 +43,8 @@ from pyspark.sql import functions as F, Window
 
 raw = (spark.read.parquet(RAW)
             .withColumn("txn_time", F.col("txn_time").cast("timestamp"))
-            .withColumn("label_confirmed_at", F.col("label_confirmed_at").cast("timestamp")))
+            .withColumn("label_confirmed_at", F.col("label_confirmed_at").cast("timestamp"))
+            .withColumn("txn_date", F.to_date("txn_time")))   # works whether input is flat or day-partitioned
 
 (raw.write.format("delta").mode("overwrite")
     .partitionBy("txn_date")
