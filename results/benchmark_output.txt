@@ -1,0 +1,47 @@
+=== key distribution ===
+                                                                                +-----------+------+
+|merchant_id| count|
++-----------+------+
+|  MEGA_MART|538064|
+|    M000001| 73112|
+|    M000002| 50988|
++-----------+------+
+skew after repartition(merchant_id) - what a shuffle join sees:
+   shuffle partitions on merchant_id: n=32  median=45,751  max=628,235  max/median = 13.7x
+=== 1. sort-merge join (naive) ===
+== Physical Plan ==
+*(5) Project [merchant_id#4, txn_id#0, amount#3, merchant_country#33, merchant_risk_tier#34]
++- *(5) SortMergeJoin [merchant_id#4], [merchant_id#30], Inner
+   :- *(2) Sort [merchant_id#4 ASC NULLS FIRST], false, 0
+   :  +- Exchange hashpartitioning(merchant_id#4, 32), ENSURE_REQUIREMENTS, [plan_id=150]
+   :     +- *(1) Project [txn_id#0, merchant_id#4, amount#3]
+   :        +- *(1) Filter isnotnull(merchant_id#4)
+   :           +- *(1) ColumnarToRow
+   :              +- FileScan parquet [txn_id#0,amount#3,merchant_id#4,txn_date#12] Batched: true, DataFilters: [isnotnull(merchant_id#4)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/home/claude/fraud-feature-pipeline/data/raw/transactions], PartitionFilters: [], PushedFilters: [IsNotNull(merchant_id)], ReadSchema: struct<txn_id:string,amount:double,merchant_id:string>
+   +- *(4) Sort [merchant_id#30 ASC NULLS FIRST], false, 0
+      +- Exchange hashpartitioning(merchant_id#30, 32), ENSURE_REQUIREMENTS, [plan_id=159]
+         +- *(3) Filter isnotnull(merchant_id#30)
+            +- *(3) ColumnarToRow
+               +- FileScan parquet [merchant_id#30,merchant_country#33,merchant_risk_tier#34] Batched: true, DataFilters: [isnotnull(merchant_id#30)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/home/claude/fraud-feature-pipeline/data/raw/merchants.parquet], PartitionFilters: [], PushedFilters: [IsNotNull(merchant_id)], ReadSchema: struct<merchant_id:string,merchant_country:string,merchant_risk_tier:string>
+sort_merge_naive   rows=2,159,857      3.4s
+=== 2. salted sort-merge join (salt=16) ===
+skew after salting:
+   shuffle partitions on (merchant_id, salt): n=32  median=56,992  max=109,810  max/median = 1.9x
+salted             rows=2,159,857      2.1s
+=== 3. broadcast hash join ===
+== Physical Plan ==
+*(2) Project [merchant_id#4, txn_id#0, amount#3, merchant_country#33, merchant_risk_tier#34]
++- *(2) BroadcastHashJoin [merchant_id#4], [merchant_id#30], Inner, BuildRight, false
+   :- *(2) Project [txn_id#0, merchant_id#4, amount#3]
+   :  +- *(2) Filter isnotnull(merchant_id#4)
+   :     +- *(2) ColumnarToRow
+   :        +- FileScan parquet [txn_id#0,amount#3,merchant_id#4,txn_date#12] Batched: true, DataFilters: [isnotnull(merchant_id#4)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/home/claude/fraud-feature-pipeline/data/raw/transactions], PartitionFilters: [], PushedFilters: [IsNotNull(merchant_id)], ReadSchema: struct<txn_id:string,amount:double,merchant_id:string>
+   +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, string, false]),false), [plan_id=540]
+      +- *(1) Filter isnotnull(merchant_id#30)
+         +- *(1) ColumnarToRow
+            +- FileScan parquet [merchant_id#30,merchant_country#33,merchant_risk_tier#34] Batched: true, DataFilters: [isnotnull(merchant_id#30)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/home/claude/fraud-feature-pipeline/data/raw/merchants.parquet], PartitionFilters: [], PushedFilters: [IsNotNull(merchant_id)], ReadSchema: struct<merchant_id:string,merchant_country:string,merchant_risk_tier:string>
+broadcast          rows=2,159,857      0.7s
+=== summary ===
+sort_merge_naive      3.4s    1.0x faster than naive
+salted                2.1s    1.6x faster than naive
+broadcast             0.7s    5.0x faster than naive

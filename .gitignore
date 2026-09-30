@@ -1,0 +1,5 @@
+data/
+__pycache__/
+*.pyc
+results/model_lgbm.txt
+.venv/

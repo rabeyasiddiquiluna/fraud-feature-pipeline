@@ -1,0 +1,47 @@
+{
+  "A_honest_valid": {
+    "pr_auc": 0.7316,
+    "roc_auc": 0.8814,
+    "recall@1%FPR": 0.7454,
+    "recall@0.1%FPR": 0.7178,
+    "threshold@1%FPR": 0.0012,
+    "n": 192135,
+    "n_fraud": 762
+  },
+  "A_honest_test": {
+    "pr_auc": 0.7535,
+    "roc_auc": 0.8955,
+    "recall@1%FPR": 0.7685,
+    "recall@0.1%FPR": 0.7438,
+    "threshold@1%FPR": 0.0008,
+    "n": 264191,
+    "n_fraud": 1054
+  },
+  "A_best_iter": 1994,
+  "B_oracle_test": {
+    "pr_auc": 0.7593,
+    "roc_auc": 0.8984,
+    "recall@1%FPR": 0.7694,
+    "recall@0.1%FPR": 0.7486,
+    "threshold@1%FPR": 0.0007,
+    "n": 264191,
+    "n_fraud": 1054
+  },
+  "random_split_holdout": {
+    "pr_auc": 0.7687,
+    "roc_auc": 0.8881,
+    "recall@1%FPR": 0.7798,
+    "recall@0.1%FPR": 0.7575,
+    "threshold@1%FPR": 0.0021,
+    "n": 310441,
+    "n_fraud": 1299
+  },
+  "business_threshold": {
+    "threshold": 0.05,
+    "cost": 15182.75,
+    "missed_fraud_$": 14592.75,
+    "false_decline_$": 590.0,
+    "recall": 0.7296,
+    "precision": 0.867
+  }
+}
