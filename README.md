@@ -77,6 +77,16 @@ Runs the same big-to-small join three ways with AQE and auto-broadcast turned of
 - **Leakage check**: trains a second model on a random 70/30 split of the same rows. If random-split PR-AUC ≫ time-split PR-AUC, something leaks. Gap here is +0.01.
 - **Business threshold**: sweeps thresholds minimizing `missed_fraud_$ + 5$ × false_declines`.
 
+## Orchestration and platform
+
+- **Airflow** — `airflow/dags/fraud_pipeline_dag.py` runs the four stages nightly with retries and a
+  PR-AUC quality gate. See `airflow/README.md` (runs locally with `airflow standalone`).
+- **Databricks** — `databricks/build_features_notebook.py` is the feature layer as a notebook on
+  Delta Lake (bronze/silver tables, `OPTIMIZE ZORDER BY card_id`, time travel, Feature Store hook);
+  `databricks/job.json` schedules it as a Workflows job. See `databricks/README.md`.
+- **Hadoop** — Spark reads/writes through Hadoop's filesystem API; on a cluster the only change is
+  the path (`hdfs://` or `s3://`) and submitting to YARN.
+
 ## Run it
 
 ```bash
